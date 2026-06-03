@@ -53,6 +53,18 @@ public class PublicFragmentController {
         repository.save(new PublicFragment(AESUtil.encrypt("1"), "Bought Laptop"));
         repository.save(new PublicFragment(AESUtil.encrypt("2"), "Bought Phone"));
         repository.save(new PublicFragment(AESUtil.encrypt("3"), "Bought Keyboard"));
+        repository.save(new PublicFragment(AESUtil.encrypt("4"), "Bought Monitor"));
+        repository.save(new PublicFragment(AESUtil.encrypt("5"), "Bought Mouse"));
+        repository.save(new PublicFragment(AESUtil.encrypt("6"), "Bought Printer"));
+        repository.save(new PublicFragment(AESUtil.encrypt("7"), "Bought Tablet"));
+        repository.save(new PublicFragment(AESUtil.encrypt("8"), "Bought Smart Watch"));
+        repository.save(new PublicFragment(AESUtil.encrypt("9"), "Bought Headphones"));
+        repository.save(new PublicFragment(AESUtil.encrypt("10"), "Bought Camera"));
+        repository.save(new PublicFragment(AESUtil.encrypt("11"), "Bought Gaming Chair"));
+        repository.save(new PublicFragment(AESUtil.encrypt("12"), "Bought SSD"));
+        repository.save(new PublicFragment(AESUtil.encrypt("13"), "Bought Graphics Card"));
+        repository.save(new PublicFragment(AESUtil.encrypt("14"), "Bought Mechanical Keyboard"));
+        repository.save(new PublicFragment(AESUtil.encrypt("15"), "Bought Microphone"));
 
         return "Seed public fragment successfully!";
     }
@@ -107,27 +119,44 @@ public class PublicFragmentController {
                     .toLowerCase()
                     .contains(purchase.toLowerCase())) {
 
-                String decryptedOid =
-                        AESUtil.decrypt(fragment.getEncOid());
+                try {
 
-                String url =
-                        "http://localhost:8082/secure/" + decryptedOid;
+                    String decryptedOid =
+                            AESUtil.decrypt(fragment.getEncOid());
 
-                SecureFragmentDTO customer =
-                        restTemplate.getForObject(
-                                url,
-                                SecureFragmentDTO.class
-                        );
+                    String url =
+                            "http://localhost:8082/secure/" + decryptedOid;
 
-                long endTime = System.currentTimeMillis();
+                    SecureFragmentDTO customer =
+                            restTemplate.getForObject(
+                                    url,
+                                    SecureFragmentDTO.class
+                            );
 
-                long latency = endTime - startTime;
+                    long endTime = System.currentTimeMillis();
+                    long latency = endTime - startTime;
 
-                return "Customer: "
-                        + customer.getName()
-                        + "<br>Latency: "
-                        + latency
-                        + " ms";
+                    return "Customer: "
+                            + customer.getName()
+                            + "<br>Purchase: "
+                            + fragment.getPurchaseHistory()
+                            + "<br>Latency: "
+                            + latency
+                            + " ms";
+
+                } catch (Exception e) {
+
+                    long endTime = System.currentTimeMillis();
+                    long latency = endTime - startTime;
+
+                    return "Public data found: "
+                            + fragment.getPurchaseHistory()
+                            + "<br>But Secure Node is unavailable."
+                            + "<br>Cannot retrieve customer identity."
+                            + "<br>Latency before failure: "
+                            + latency
+                            + " ms";
+                }
             }
         }
 

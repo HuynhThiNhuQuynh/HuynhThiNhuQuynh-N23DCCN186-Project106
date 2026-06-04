@@ -1,19 +1,19 @@
 package com.csdlpt.publicnode.controller;
 
+import com.csdlpt.publicnode.dto.SecureFragmentDTO;
+import com.csdlpt.publicnode.dto.SecureFragmentRequestDTO;
 import com.csdlpt.publicnode.entity.PublicFragment;
+import com.csdlpt.publicnode.original.CustomerData;
 import com.csdlpt.publicnode.repository.PublicFragmentRepository;
+import com.csdlpt.publicnode.utils.AESUtil;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.csdlpt.publicnode.utils.AESUtil;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-
-import com.csdlpt.publicnode.dto.SecureFragmentDTO;
-import com.csdlpt.publicnode.utils.AESUtil;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/public")
@@ -21,13 +21,16 @@ public class PublicFragmentController {
 
     private final PublicFragmentRepository repository;
     private final RestTemplate restTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     public PublicFragmentController(
             PublicFragmentRepository repository,
-            RestTemplate restTemplate) {
+            RestTemplate restTemplate,
+            JdbcTemplate jdbcTemplate) {
 
         this.repository = repository;
         this.restTemplate = restTemplate;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @GetMapping("/all")
@@ -46,27 +49,57 @@ public class PublicFragmentController {
                 + "<br>OID giai ma: " + decrypted;
     }
 
-    @GetMapping("/seed")
-    public String seedData() {
+    @GetMapping("/fragment")
+    public String verticalFragmentation() {
+
+        List<CustomerData> customers = jdbcTemplate.query(
+                "SELECT oid, name, ssn, credit_card, purchase_history FROM original_db.customer_data",
+                (rs, rowNum) -> {
+                    CustomerData customer = new CustomerData();
+                    customer.setOid(rs.getInt("oid"));
+                    customer.setName(rs.getString("name"));
+                    customer.setSsn(rs.getString("ssn"));
+                    customer.setCreditCard(rs.getString("credit_card"));
+                    customer.setPurchaseHistory(rs.getString("purchase_history"));
+                    return customer;
+                }
+        );
+
         repository.deleteAll();
 
-        repository.save(new PublicFragment(AESUtil.encrypt("1"), "Bought Laptop"));
-        repository.save(new PublicFragment(AESUtil.encrypt("2"), "Bought Phone"));
-        repository.save(new PublicFragment(AESUtil.encrypt("3"), "Bought Keyboard"));
-        repository.save(new PublicFragment(AESUtil.encrypt("4"), "Bought Monitor"));
-        repository.save(new PublicFragment(AESUtil.encrypt("5"), "Bought Mouse"));
-        repository.save(new PublicFragment(AESUtil.encrypt("6"), "Bought Printer"));
-        repository.save(new PublicFragment(AESUtil.encrypt("7"), "Bought Tablet"));
-        repository.save(new PublicFragment(AESUtil.encrypt("8"), "Bought Smart Watch"));
-        repository.save(new PublicFragment(AESUtil.encrypt("9"), "Bought Headphones"));
-        repository.save(new PublicFragment(AESUtil.encrypt("10"), "Bought Camera"));
-        repository.save(new PublicFragment(AESUtil.encrypt("11"), "Bought Gaming Chair"));
-        repository.save(new PublicFragment(AESUtil.encrypt("12"), "Bought SSD"));
-        repository.save(new PublicFragment(AESUtil.encrypt("13"), "Bought Graphics Card"));
-        repository.save(new PublicFragment(AESUtil.encrypt("14"), "Bought Mechanical Keyboard"));
-        repository.save(new PublicFragment(AESUtil.encrypt("15"), "Bought Microphone"));
+        restTemplate.delete("http://localhost:8082/secure/clear");
 
-        return "Seed public fragment successfully!";
+        for (CustomerData customer : customers) {
+
+            String encryptedOid =
+                    AESUtil.encrypt(String.valueOf(customer.getOid()));
+
+            PublicFragment publicFragment =
+                    new PublicFragment(
+                            encryptedOid,
+                            customer.getPurchaseHistory()
+                    );
+
+            repository.save(publicFragment);
+
+            SecureFragmentRequestDTO secureFragment =
+                    new SecureFragmentRequestDTO(
+                            customer.getOid(),
+                            customer.getName(),
+                            customer.getSsn(),
+                            customer.getCreditCard()
+                    );
+
+            restTemplate.postForObject(
+                    "http://localhost:8082/secure/save",
+                    secureFragment,
+                    SecureFragmentDTO.class
+            );
+        }
+
+        return "Vertical fragmentation completed successfully!"
+                + "<br>Total records fragmented: "
+                + customers.size();
     }
 
     @GetMapping("/customer")

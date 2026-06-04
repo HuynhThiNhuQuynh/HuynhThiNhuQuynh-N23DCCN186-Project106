@@ -26,4 +26,15 @@ public class SecureFragmentController {
     public SecureFragment getByOid(@PathVariable Integer oid) {
         return repository.findByOid(oid).orElse(null);
     }
+
+    @DeleteMapping("/clear")
+    public String clearSecureData(){
+        repository.deleteAll();
+        return "Secure fragment cleared!";
+    }
+
+    @PostMapping("/save")
+    public SecureFragment saveSecureFragment(@RequestBody SecureFragment secureFragment){
+        return repository.save(secureFragment);
+    }
 }
